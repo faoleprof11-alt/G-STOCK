@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Gestion Stock DEKA</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f2f4f7;
+            color: #222;
+        }
+
+        header {
+            background: #1f2937;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+
+        .container {
+            width: 95%;
+            max-width: 1000px;
+            margin: 20px auto;
+        }
+
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            margin-bottom: 20px;
+        }
+
+        .card h2 {
+            margin-top: 0;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: bold;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+
+        button {
+            border: none;
+            padding: 12px 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: bold;
+        }
+
+        .btn-add {
+            background: #16a34a;
+            color: white;
+            width: 100%;
+        }
+
+        .btn-edit {
+            background: #2563eb;
+            color: white;
+            margin-right: 5px;
+        }
+
+        .btn-delete {
+            background: #dc2626;
+            color: white;
+        }
+
+        .table-container {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 650px;
+        }
+
+        th,
+        td {
+            border-bottom: 1px solid #ddd;
+            padding: 12px 8px;
+            text-align: left;
+        }
+
+        th {
+            background: #f3f4f6;
+        }
+
+        .empty {
+            text-align: center;
+            color: #777;
+            padding: 25px;
+        }
+
+        @media (max-width: 600px) {
+            header h1 {
+                font-size: 20px;
+            }
+
+            .container {
+                width: 94%;
+            }
+
+            .card {
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<header>
+    <h1>📦 GESTION DE STOCK DEKA</h1>
+</header>
+
+<div class="container">
+
+    <!-- FORMULAIRE -->
+    <div class="card">
+        <h2>Ajouter un produit</h2>
+
+        <form id="productForm">
+
+            <div class="form-group">
+                <label for="productName">Nom du produit</label>
+                <input
+                    type="text"
+                    id="productName"
+                    placeholder="Exemple : Riz 25 kg"
+                    required
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="productQuantity">Quantité</label>
+                <input
+                    type="number"
+                    id="productQuantity"
+                    min="0"
+                    placeholder="Exemple : 10"
+                    required
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="purchasePrice">Prix d'achat</label>
+                <input
+                    type="number"
+                    id="purchasePrice"
+                    min="0"
+                    step="0.01"
+                    placeholder="Exemple : 1000"
+                    required
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="sellingPrice">Prix de vente</label>
+                <input
+                    type="number"
+                    id="sellingPrice"
+                    min="0"
+                    step="0.01"
+                    placeholder="Exemple : 1200"
+                    required
+                >
+            </div>
+
+            <button type="submit" class="btn-add">
+                ➕ Ajouter le produit
+            </button>
+
+        </form>
+    </div>
+
+    <!-- LISTE DES PRODUITS -->
+    <div class="card">
+        <h2>📋 Liste des produits</h2>
+
+        <div class="table-container">
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Produit</th>
+                        <th>Quantité</th>
+                        <th>Prix achat</th>
+                        <th>Prix vente</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+
+                <tbody id="productRows">
+                    <tr>
+                        <td colspan="5" class="empty">
+                            Aucun produit pour le moment.
+                        </td>
+                    </tr>
+                </tbody>
+
+            </table>
+
+        </div>
+    </div>
+
+</div>
+
+<script>
+
+    // ==============================
+    // VARIABLES
+    // ==============================
+
+    let products = JSON.parse(
+        localStorage.getItem("dekaProducts")
+    ) || [];
+
+    let editingId = null;
+
+
+    // ==============================
+    // ELEMENTS HTML
+    // ==============================
+
+    const productForm = document.getElementById("productForm");
+
+    const productName = document.getElementById("productName");
+
+    const productQuantity = document.getElementById("productQuantity");
+
+    const purchasePrice = document.getElementById("purchasePrice");
+
+    const sellingPrice = document.getElementById("sellingPrice");
+
+    const productRows = document.getElementById("productRows");
+
+
+    // ==============================
+    // AFFICHER LES PRODUITS
+    // ==============================
+
+    function renderProducts() {
+
+        if (products.length === 0) {
+
+            productRows.innerHTML = `
+                <tr>
+                    <td colspan="5" class="empty">
+                        Aucun produit pour le moment.
+                    </td>
+                </tr>
+            `;
+
+            return;
+        }
+
+
+        productRows.innerHTML = products.map(product => {
+
+            return `
+                <tr>
+
+                    <td>
+                        ${escapeHtml(product.name)}
+                    </td>
+
+                    <td>
+                        ${product.quantity}
+                    </td>
+
+                    <td>
+                        ${Number(product.purchasePrice).toFixed(2)}
+                    </td>
+
+                    <td>
+                        ${Number(product.sellingPrice).toFixed(2)}
+                    </td>
+
+                    <td>
+
+                        <button
+                            class="btn-edit"
+                            onclick="editProduct('${product.id}')"
+                        >
+                            ✏️ Modifier
+                        </button>
+
+                        <button
+                            class="btn-delete"
+                            onclick="deleteProduct('${product.id}')"
+                        >
+                            🗑️ Supprimer
+                        </button>
+
+                    </td>
+
+                </tr>
+            `;
+
+        }).join("");
+    }
+
+
+    // ==============================
+    // AJOUTER / MODIFIER
+    // ==============================
+
+    productForm.addEventListener("submit", function(event) {
+
+        event.preventDefault();
+
+
+        const name = productName.value.trim();
+
+        const quantity = Number(productQuantity.value);
+
+        const purchase = Number(purchasePrice.value);
+
+        const selling = Number(sellingPrice.value);
+
+
+        if (!name) {
+            alert("Veuillez entrer le nom du produit.");
+            return;
+        }
+
+
+        if (quantity < 0 || purchase < 0 || selling < 0) {
+            alert("Les valeurs ne peuvent pas être négatives.");
+            return;
+        }
+
+
+        // MODIFICATION
+
+        if (editingId !== null) {
+
+            const product = products.find(
+                p => p.id === editingId
+            );
+
+            if (product) {
+
+                product.name = name;
+                product.quantity = quantity;
+                product.purchasePrice = purchase;
+                product.sellingPrice = selling;
+
+            }
+
+            editingId = null;
+
+        }
+
+        // AJOUT
+
+        else {
+
+            const newProduct = {
+
+                id: Date.now().toString(),
+
+                name: name,
+
+                quantity: quantity,
+
+                purchasePrice: purchase,
+
+                sellingPrice: selling
+
+            };
+
+            products.push(newProduct);
+        }
+
+
+        saveProducts();
+
+        renderProducts();
+
+        productForm.reset();
+
+    });
+
+
+    // ==============================
+    // MODIFIER UN PRODUIT
+    // ==============================
+
+    function editProduct(id) {
+
+        const product = products.find(
+            p => p.id === id
+        );
+
+        if (!product) {
+            return;
+        }
+
+
+        productName.value = product.name;
+
+        productQuantity.value = product.quantity;
+
+        purchasePrice.value = product.purchasePrice;
+
+        sellingPrice.value = product.sellingPrice;
+
+
+        editingId = id;
+
+
+        window.scrollTo({
+            top: 0,
+            behavior: "smooth"
+        });
+
+    }
+
+
+    // ==============================
+    // SUPPRIMER UN PRODUIT
+    // ==============================
+
+    function deleteProduct(id) {
+
+        const product = products.find(
+            p => p.id === id
+        );
+
+
+        if (!product) {
+            return;
+        }
+
+
+        const confirmation = confirm(
+            `Voulez-vous vraiment supprimer "${product.name}" ?`
+        );
+
+
+        if (!confirmation) {
+            return;
+        }
+
+
+        products = products.filter(
+            p => p.id !== id
+        );
+
+
+        saveProducts();
+
+        renderProducts();
+
+    }
+
+
+    // ==============================
+    // SAUVEGARDER
+    // ==============================
+
+    function saveProducts() {
+
+        localStorage.setItem(
+            "dekaProducts",
+            JSON.stringify(products)
+        );
+
+    }
+
+
+    // ==============================
+    // PROTECTION HTML
+    // ==============================
+
+    function escapeHtml(text) {
+
+        const div = document.createElement("div");
+
+        div.textContent = text;
+
+        return div.innerHTML;
+
+    }
+
+
+    // ==============================
+    // INITIALISATION
+    // ==============================
+
+    renderProducts();
+
+</script>
+
+</body>
+</html>
